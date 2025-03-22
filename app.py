@@ -1,34 +1,42 @@
-from flask import Flask, render_template, redirect, url_for
-import smtplib
-import ssl
+from flask import Flask, render_template, request, redirect
+import requests
 
 app = Flask(__name__)
 
-# Email configuration
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 465
-SENDER_EMAIL = 'aryanshekar2012@gmail.com'
-SENDER_PASSWORD = 'ziwc veph zfdw mdso'  # Use App Password, not Gmail password
-RECEIVER_EMAIL = 'aryan.shekar@outlook.com'
+MAILERSEND_API_KEY = 'YOUR_OWN_MAILERSEND_API'
+MAILERSEND_FROM_EMAIL = 'YOUR_EMAIL'
 
-def send_email():
-    subject = "Hello from Flask App!"
-    body = "This email was sent from a Python Flask app by clicking a button."
-    message = f"Subject: {subject}\n\n{body}"
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, message)
-
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'POST':
+        recipient_email = request.form['email']
+        message_body = request.form['message']
 
-@app.route('/send_email', methods=['POST'])
-def trigger_email():
-    send_email()
-    return redirect(url_for('index'))
+        headers = {
+            "Authorization": f"Bearer {MAILERSEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "from": {
+                "email": MAILERSEND_FROM_EMAIL,
+                "name": "m from Flask"
+            },
+            "to": [
+                {"email": recipient_email, "name": "Flask Recipient"}
+            ],
+            "subject": "📧 Message from m's Flask App",
+            "text": message_body
+        }
+
+        response = requests.post("https://api.mailersend.com/v1/email", headers=headers, json=data)
+
+        if response.status_code == 202:
+            return render_template('index.html', success=True)
+        else:
+            return render_template('index.html', error=response.text)
+
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
